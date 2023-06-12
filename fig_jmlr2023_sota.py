@@ -144,6 +144,8 @@ def run_other_experiment(dataset_loader, algorithm, path):
     results['algorithm'] = [algorithm.name]
 
     X_train, X_test, y_train, y_test = dataset_loader.load()
+    X_train, X_test = scale_data(X_train, X_test)
+    X_train, X_test = add_bias(X_train, X_test)
     cv = GridSearchCV(algorithm.clf, algorithm.params, cv=5, verbose=0, n_jobs=-1)
     cv.fit(X_train, y_train)
     results['fit time'] = cv.refit_time_
