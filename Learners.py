@@ -539,6 +539,7 @@ class OptimalStepsizeLearner(Learner):
     def _take_one_step(self):
         center = self.model.sample_center()
         coef = self._get_coef(center)
+        self.model = (1-self.regularization) * self.model
         self.model.add_center(center, coef)
     
     def _get_coef(self, center) -> float:
@@ -556,15 +557,15 @@ class OptimalStepsizeLearner(Learner):
         m, _ = batch_data.shape
 
         if isinstance(self.loss, MSE):
-            num = 1/m * np.dot(model_outputs - batch_targets, center_model_outputs) + reg * alpha_of_w
+            num = 1/m * np.dot((1-reg) * model_outputs - batch_targets, center_model_outputs) + reg * (1-reg) * alpha_of_w
             denom = 1/m * np.sum(center_model_outputs**2) + reg * Kww
             return -num / denom
         else:
             loss = self.loss
 
             def derivative_function(eta):
-                value = reg * (alpha_of_w + eta * Kww)
-                partial_derivatives = loss.derivative(model_outputs + eta * center_model_outputs, batch_targets)
+                value = reg * (1-reg) * (alpha_of_w + eta * Kww)
+                partial_derivatives = loss.derivative((1-reg)*model_outputs + eta * center_model_outputs, batch_targets)
                 value += 1/m * np.dot(partial_derivatives, center_model_outputs)
                 return value
 
