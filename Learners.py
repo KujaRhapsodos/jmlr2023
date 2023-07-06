@@ -444,6 +444,28 @@ class LeastSquaresLearner(Learner):
 
         self.model.set_coefs(coefs.tolist())
 
+    def _rks_fit(self, centers=None):
+        """
+        Learn the optimal coefficients.
+
+        The regularization term is the euclidean norm of the weight function coefficients.
+        """
+        if centers is None:
+            centers = [self.model.sample_center() for _ in range(self.n_iter)]
+            
+        self.model.set_centers(centers)
+
+        Phi = self.model.expectations(self.training_data)
+        m, _ = self.training_data.shape 
+        T = len(centers)
+        
+        A = np.dot(Phi.T, Phi) + m * self.regularization() * np.eye(T)
+        B = np.dot(Phi.T, self.training_targets)
+
+        coefs = np.linalg.solve(A, B)
+
+        self.model.set_coefs(coefs.tolist())
+
 
 class LassoLearner(Learner):
     """
@@ -495,6 +517,7 @@ class LassoLearner(Learner):
         self.model.set_coefs(coefs)
         self.model.remove_useless_centers()
 
+# TODO Very slow, figure out why.
 class OptimalStepsizeLearner(Learner):
     """
     Classify using RKHS weightings of functions.
@@ -543,6 +566,7 @@ class OptimalStepsizeLearner(Learner):
         self.model.add_center(center, coef)
     
     def _get_coef(self, center) -> float:
+        # TODO Attempt to optimize. Center_model definition is surprisingly costly.
         center_model = self.model.copy().set_centers([center], [1])
         if self.use_batch:
             batch_data, batch_targets = self._sample_batch(self.batch_size)

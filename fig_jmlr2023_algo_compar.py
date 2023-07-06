@@ -86,9 +86,8 @@ def clean_df(df: pd.DataFrame):
     df.replace('SFGDLearner', 'SFGD', inplace=True)
     df.replace('LeastSquaresLearner', 'Least squares fit', inplace=True)
     df.replace('LassoLearner', 'Lasso fit', inplace=True)
-    df.replace('OptimalStepsizeLearner', 'Optimal stepsize descent', inplace=True)
-    grouped = df.groupby(by=['algorithm', 'T'], as_index=False).mean()
-    return grouped
+    df.replace('OptimalStepsizeLearner', 'Optimal stepsize descent', inplace=True) 
+    return df
 
 def expe(use_batch=True):
     # these lists must be the same length
@@ -109,12 +108,20 @@ def expe(use_batch=True):
 def make_figures():
 
     results_df = get_results_df()
+    algos = results_df['algorithm'].unique()
+    colors = ['blue', 'orange', 'green', 'red']
+    mean = results_df.groupby(by=['algorithm', 'T'], as_index=False).mean()
+    std = results_df.groupby(by=['algorithm', 'T'], as_index=False).std()
+
     plt.figure(figsize=(4,4))
-    for algo in results_df['algorithm'].unique():
-        df = results_df.loc[results_df['algorithm'] == algo]
-        x = df['T']
-        y = df['Training error']
-        plt.plot(x, y, label=algo)
+    for algo, color in zip(algos, colors):
+        mean_df = mean.loc[mean['algorithm'] == algo]
+        std_df = std.loc[std['algorithm'] == algo]
+        x = mean_df['T']
+        y = mean_df['Training error']
+        error = std_df['Training error']
+        plt.plot(x, y, label=algo, color=color)
+        plt.fill_between(x, y-error, y+error, alpha=0.1, color=color)
     plt.xlabel('T')
     plt.ylabel('Training error')
     plt.legend()
@@ -122,11 +129,14 @@ def make_figures():
     plt.savefig(get_figure_path() + '-train_01.pdf')
     plt.clf()
 
-    for algo in results_df['algorithm'].unique():
-        df = results_df.loc[results_df['algorithm'] == algo]
-        x = df['T']
-        y = df['Test error']
-        plt.plot(x, y, label=algo)
+    for algo, color in zip(algos, colors):
+        mean_df = mean.loc[mean['algorithm'] == algo]
+        std_df = std.loc[std['algorithm'] == algo]
+        x = mean_df['T']
+        y = mean_df['Test error']
+        error = std_df['Test error']
+        plt.plot(x, y, label=algo, color=color)
+        plt.fill_between(x, y-error, y+error, alpha=0.1, color=color)
     plt.xlabel('T')
     plt.ylabel('Test error')
     plt.legend()
@@ -134,11 +144,14 @@ def make_figures():
     plt.savefig(get_figure_path() + '-test_01.pdf')
     plt.clf()
 
-    for algo in results_df['algorithm'].unique():
-        df = results_df.loc[results_df['algorithm'] == algo]
-        x = df['T']
-        y = df['Training time']
-        plt.plot(x, y, label=algo)
+    for algo, color in zip(algos, colors):
+        mean_df = mean.loc[mean['algorithm'] == algo]
+        std_df = std.loc[std['algorithm'] == algo]
+        x = mean_df['T']
+        y = mean_df['Training time']
+        error = std_df['Training time']
+        plt.plot(x, y, label=algo, color=color)
+        plt.fill_between(x, y-error, y+error, alpha=0.1, color=color)
     plt.xlabel('T')
     plt.ylabel('Training time (s)')
     plt.legend()

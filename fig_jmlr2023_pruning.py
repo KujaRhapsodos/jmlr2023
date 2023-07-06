@@ -13,10 +13,11 @@ X_train, X_test = add_bias(X_train, X_test)
 
 TEST = False
 
-RUN_EXPE = True
+RERUN = True
 
 TABLE_FOLDER = './tables'
 TABLE_PATH = TABLE_FOLDER + '/jmlr2023_pruning.tex'
+TABLE_WITH_STD_PATH = TABLE_FOLDER + '/jmlr2023_pruning-with-std.tex'
 LOG_FOLDER = './results'
 LOG_PATH = LOG_FOLDER + '/jmlr2023_pruning.csv'
 
@@ -65,7 +66,7 @@ def run_comparison():
     return df
 
 def get_results_df():
-    if RUN_EXPE or not check_log_exists():
+    if RERUN or not check_log_exists():
         df = run_comparison()
     else:
         df = load_df()
@@ -98,6 +99,23 @@ def get_one_line(learner : Learner, rng):
     return results
 
 def generate_table(df: pd.DataFrame):
+    df = clean_df(df)
+    table = df.groupby(['algo']).mean()
+    table = table.round(3)
+    pd.set_option("precision", 3)
+    print(table)
+    return table
+
+def get_std_table_from_df(df: pd.DataFrame):
+    df = clean_df(df)
+    table = df.groupby(['algo']).std()
+    table = table.replace(np.nan, '', regex=True)
+    table = table.replace('nan', '', regex=True)
+    table = table.round(3)  
+    pd.set_option("precision", 3)
+    return table
+
+def clean_df(df: pd.DataFrame):
     df = df.replace('Method1Pruner', 'Method 1')
     df = df.replace('Method2Pruner', 'Method 2')
     df = df.replace('Instantiation1', 'I1')
@@ -106,25 +124,29 @@ def generate_table(df: pd.DataFrame):
     df = df.replace('LeastSquaresLearner', 'Least squares fit')
     df = df.replace('LassoLearner', 'Lasso fit')
     df = df.drop(columns=['norm alpha', 'norm diff', 'rademacher after lasso'])
-    table = df.groupby(['algo']).mean()
-    table = table.round(3)
-    pd.set_option("precision", 3)
-    print(table)
-    return table
+    return df
 
-def save_table(table):
+def get_table_with_std_from_table_and_std(table, std_table):
+    table_with_std = table.astype(str) + ' ± ' + std_table.astype(str)
+    table_with_std = table_with_std.replace(' ± ', '', regex=False)
+    return table_with_std
+
+def save_table(table, path):
     header = ['$\\empirical^{01}$', '$\\risk^{01}$', 
               '\%pruning', 'pruning+$\\empirical^{01}$', 'pruning+$\\risk^{01}$', 
               '$\\normH{\\beta}$']
     ensure_folder_exists(TABLE_FOLDER)
-    table.to_latex(TABLE_PATH, column_format='rrrrrrrrrr', header=header, escape=False)
+    table.to_latex(path, column_format='rrrrrrrrrr', header=header, escape=False)
     print('Latex table saved to {}'.format(TABLE_FOLDER))
 
 def run_experiment():
     df = get_results_df()
     save_df(df)
     table = generate_table(df)
-    save_table(table)
+    save_table(table, TABLE_PATH)
+    std_table = get_std_table_from_df(df)
+    table_with_std = get_table_with_std_from_table_and_std(table, std_table)
+    save_table(table_with_std, TABLE_WITH_STD_PATH)
 
 if __name__ == '__main__':
     start = time.time()

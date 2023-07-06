@@ -17,6 +17,9 @@ from RKS import RKSClassifier
 TEST = False
 
 RUN_EXPE = True
+RUN_SFGD = True
+RUN_OTHER = True
+
 GENERATE_TABLES = True
 PRINT_BEST_PARAMS = False
 
@@ -146,6 +149,7 @@ def run_other_experiment(dataset_loader, algorithm, path):
     X_train, X_test, y_train, y_test = dataset_loader.load()
     X_train, X_test = scale_data(X_train, X_test)
     X_train, X_test = add_bias(X_train, X_test)
+
     cv = GridSearchCV(algorithm.clf, algorithm.params, cv=5, verbose=0, n_jobs=-1)
     cv.fit(X_train, y_train)
     results['fit time'] = cv.refit_time_
@@ -181,19 +185,21 @@ def launch_experiments(results_path):
     n_total_fits = (1 + N_RUNS * (len(MODELS) * len(LEARNERS) + (len(OTHER_ALGOS) - 1))) * len(DATASETS)
     timetracker = TimeTracker(n_total_fits)
     for dataset in DATASETS:
-        for learner_class in LEARNERS:
-            for (model_class, params_grid) in MODELS:
-                for _ in range(N_RUNS): 
-                    run_one_sfgd_experiment(dataset, learner_class, model_class, params_grid, results_path)
+        if RUN_SFGD:
+            for learner_class in LEARNERS:
+                for (model_class, params_grid) in MODELS:
+                    for _ in range(N_RUNS): 
+                        run_one_sfgd_experiment(dataset, learner_class, model_class, params_grid, results_path)
+                        timetracker.update()
+        if RUN_OTHER:
+            for algo in OTHER_ALGOS:
+                if algo.clf.__class__.__name__ == 'SVC':
+                    n_runs = 1
+                else:
+                    n_runs = N_RUNS
+                for _ in range(n_runs): 
+                    run_other_experiment(dataset, algo, results_path)
                     timetracker.update()
-        for algo in OTHER_ALGOS:
-            if algo.clf.__class__.__name__ == 'SVC':
-                n_runs = 1
-            else:
-                n_runs = N_RUNS
-            for _ in range(n_runs): 
-                run_other_experiment(dataset, algo, results_path)
-                timetracker.update()
 
 def ensure_folder_exists(path):
     if not os.path.exists(path):
